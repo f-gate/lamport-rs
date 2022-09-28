@@ -1,10 +1,7 @@
-fn main() {
-    println!("Hello, world!");
-}
 
 type Index = u64;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 enum Event {
     DoThing,
     DoSomethingElse,
@@ -22,7 +19,12 @@ trait LogicalClock {
     fn send_event(&mut self, event: Event) -> (Event, Index);
 
 }
-
+/// The lamport clock can describe a happens before relationship but not the other way round.
+/// Thus is it consistant with "potential" causality
+/// 1: Each process has a counter init = 0
+/// 2: Each event increments the counter
+/// 3: On send we must include the counter
+/// 4: On recieve we set the counter to max(local, recieved)
 struct Lamport {
     time: Index,
     last_events: Vec<Event>, 
@@ -39,7 +41,7 @@ impl Default for Lamport {
 impl LogicalClock for Lamport {
     fn set_clock(&mut self, time: Index, event: Event) -> Index {
         if time > self.time      {
-            self.time = time + 1u64;
+            self.time = time;
         }
         self.last_events.push(event);
         self.time
@@ -56,14 +58,16 @@ impl LogicalClock for Lamport {
     /// Dummy function for sending an event.
     fn send_event(&mut self, event: Event) -> (Event, Index) {
         //increment own clock by one and return restul
+        println!("time is {}", &self.time);
         self.set_clock(self.time + 1u64, event.clone());
+        println!("time is {}", &self.time);
         return (event, self.time)
     }
 }
 
 
 #[test]
-fn test_lamport_recieve() {
+fn test_lamport_recieve_send() {
 
     // Both indexes are zero;
     let mut l1 = Lamport::default();
@@ -72,16 +76,30 @@ fn test_lamport_recieve() {
     assert!(l1.time == 0);
     assert!(l2.time == 0);
 
-    // Send thus increment time.
+    // Send thus increment l2 time.
     let l2_send = l2.send_event(Event::DoThing);
 
     assert!(l2.time == 1);
     assert!(l1.time == 0);
 
-    // Recieved thus increment time.
+    // Recieved thus increment l1 time.
     l1.recieve_event(l2_send.0, l2_send.1);
 
-    assert!(l2.time == 1);
+    // l1 takes the l2s time and increments thus 2.
     assert!(l1.time == 2);
+    assert!(l2.time == 1);
+}
 
+#[test]
+fn test_lamport_event_history() {
+    let mut l1 = Lamport::default();
+
+    l1.recieve_event(Event::DoThing, 1u64);
+    l1.recieve_event(Event::DropTable, 2u64);
+    l1.recieve_event(Event::DoSomethingElse, 3u64);
+
+    assert_eq!(l1.last_events.len(), 3usize);
+    assert_eq!(l1.last_events[0], Event::DoThing);
+    assert_eq!(l1.last_events[1], Event::DropTable);
+    assert_eq!(l1.last_events[2], Event::DoSomethingElse);
 }
