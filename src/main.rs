@@ -10,20 +10,12 @@ enum Event {
     Inherent,
 }
 
-enum Error {
-    SendError,
-    RecieveError,
-    InherentError,
-}
-
 trait LogicalClock {
     fn set_clock(&mut self, time: Index, event: Event) -> Index;
 
     // only to handle modifications of time on a system.
     // Returns 
     fn recieve_event(&mut self, event: Event, time: Index) -> Index;
-
-    fn send_event(other_clock: Self);
 
 }
 
@@ -48,10 +40,6 @@ impl LogicalClock for Lamport {
             _ => return Self::set_clock(self, time, event) 
         }
     }
-    fn send_event<T: LogicalClock>(&self, other_clock: T, event: Event) {
-        other_clock::recieve_event(event, self.time);
-    }
-
 }
 
 
