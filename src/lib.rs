@@ -58,9 +58,7 @@ impl LogicalClock for Lamport {
     /// Dummy function for sending an event.
     fn send_event(&mut self, event: Event) -> (Event, Index) {
         //increment own clock by one and return restul
-        println!("time is {}", &self.time);
         self.set_clock(self.time + 1u64, event.clone());
-        println!("time is {}", &self.time);
         return (event, self.time)
     }
 }
